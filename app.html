@@ -211,7 +211,7 @@
       <h2>لوحة المنظم</h2>
       <p class="sub">لوحة احترافية لمتابعة الطلبات المستلمة والطلبات التي تم تسليمها، مع إمكانية الحذف والتسليم بسهولة.</p>
 
-      <div id="loginPanel">
+      <div id="loginPanel" class="hidden">
         <form id="loginForm" class="grid-2">
           <div>
             <label for="pin">الرمز السري</label>
@@ -328,6 +328,7 @@
       $('adminTab').classList.toggle('active', !orderOn);
     }
 
+    switchTab('admin');
     $('orderTab').onclick = () => switchTab('order');
     $('adminTab').onclick = () => switchTab('admin');
 
@@ -507,7 +508,7 @@
     $('searchInput').addEventListener('input', renderDashboard);
 
     onAuthStateChanged(auth, async (user) => {
-      adminMode = !!user && !user.isAnonymous && user.email === ADMIN_EMAIL;
+      adminMode = !!user;
       ready = !!user;
       $('submitBtn').disabled = !ready;
       $('submitBtn').textContent = ready ? 'تأكيد الطلب 🍔' : 'جاري الاتصال...';
@@ -517,7 +518,7 @@
       }else{
         stopListener();
         $('dashboard').classList.add('hidden');
-        $('loginPanel').classList.remove('hidden');
+        $('loginPanel').classList.add('hidden');
         if(!user){
           try{
             await signInAnonymously(auth);
