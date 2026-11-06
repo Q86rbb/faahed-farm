@@ -1,27 +1,593 @@
-<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>مزرعة الفاهد | طلبات البرجر</title><style>
-:root{color-scheme:dark;--bg:#101a15;--card:#203329;--gold:#efc676;--muted:#b7c9bb}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:white;font-family:Tahoma,Arial,sans-serif}header{text-align:center;padding:35px 15px;background:#20392c;border-bottom:3px solid #d6ad63}header h1{color:var(--gold);margin:0 0 10px}header p{color:#d7ded8;margin:0}main{max-width:660px;margin:25px auto;padding:0 16px}.card{background:var(--card);border:1px solid #49604d;border-radius:18px;padding:22px;margin-bottom:18px}h2{color:var(--gold);margin:0 0 18px;font-size:21px}label{display:block;margin:16px 0 8px;font-weight:bold}input,select,textarea{width:100%;padding:14px;border-radius:10px;border:1px solid #718375;background:#14231b;color:white;font-size:16px;font-family:inherit}textarea{min-height:90px;resize:vertical}button{padding:14px 18px;background:#d6ad63;border:0;border-radius:12px;color:#17241a;font-size:16px;font-weight:bold;cursor:pointer}button:disabled{opacity:.5;cursor:wait}.full{width:100%;margin-top:20px}.secondary{background:#344b3c;color:white}.danger{background:#9e4545;color:white}.muted{color:var(--muted);font-size:13px;line-height:1.8}.notice{color:var(--gold);line-height:1.8}.tabs{display:flex;gap:10px;margin-bottom:18px}.tabs button{flex:1}.hidden{display:none!important}.order{border-top:1px solid #506354;padding:16px 0;line-height:1.9}.order strong{color:var(--gold)}.order .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.order .actions button{font-size:13px;padding:10px}.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}.stat{background:#14231b;padding:14px;border-radius:12px}.stat b{display:block;color:var(--gold);font-size:23px}footer{text-align:center;color:#9caea0;padding:25px}.tag{display:inline-block;border:1px solid #7c8f7e;border-radius:20px;padding:1px 10px;font-size:12px}#adminStatus{margin:12px 0}small{color:var(--muted)}
-</style></head><body><header><div style="font-size:44px">🍔🌴</div><h1>مزرعة الفاهد</h1><p>نظام طلبات البرجر</p></header><main>
-<div class="tabs"><button id="orderTab">طلب برجر</button><button id="adminTab" class="secondary">لوحة المنظم 🔐</button></div>
-<section id="orderSection" class="card"><h2>🍟 سجّل طلبك</h2><p class="notice">الطلب يكون نوع واحد، وأي طلب بأسماء مستعارة لن يتم احتسابه.</p><form id="orderForm"><label for="name">الاسم الثلاثي</label><input id="name" required maxlength="60" placeholder="الاسم الأول واسم الأب واسم العائلة" autocomplete="name"><label for="item">اختر الصنف</label><select id="item" required><option value="">اختر من المنيو</option><option>صينية لسعة بطاط عادي</option><option>صينية لسعة بطاط كيرلي</option><option>صينية مشروم بطاط عادي</option><option>صينية مشروم بطاط كيرلي</option><option>صينية سادة بطاط عادي</option><option>صينية سادة بطاط كيرلي</option></select><label for="qty">الكمية</label><select id="qty"><option value="1">1 صينية</option><option value="2">2 صينية</option></select><small>الحد الأقصى صينيتان لكل طلب</small><label for="notes">ملاحظات على الطلب (اختياري)</label><textarea id="notes" maxlength="300" placeholder="مثلاً: بدون بصل"></textarea><button id="submitBtn" class="full" type="submit" disabled>جاري الاتصال...</button></form><p id="message" class="notice" role="status" aria-live="polite"></p></section>
-<section id="adminSection" class="card hidden"><h2>🔐 لوحة المنظم</h2><div id="loginPanel"><p class="muted">أدخل رمز حساب المنظم. لا تشارك الرمز مع غير المنظمين.</p><form id="loginForm"><label for="pin">الرمز السري</label><input id="pin" type="password" required autocomplete="current-password"><button class="full" id="loginBtn" type="submit">دخول المنظم</button></form></div><div id="dashboard" class="hidden"><div class="stats"><div class="stat">عدد الطلبات<b id="orderCount">0</b></div><div class="stat">مجموع الصواني<b id="trayCount">0</b></div></div><h3>إجمالي الأصناف</h3><div id="itemTotals"></div><h3>الطلبات الواردة</h3><div id="orderList">جاري التحميل...</div><button id="logoutBtn" class="secondary full">تسجيل الخروج</button></div><p id="adminStatus" class="notice" role="status"></p></section>
-</main><footer>مزرعة الفاهد © 2026</footer>
-<script type="module">
-import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
-import {getAuth,onAuthStateChanged,signInAnonymously,signInWithEmailAndPassword,signOut} from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
-import {getFirestore,collection,addDoc,onSnapshot,query,orderBy,serverTimestamp,doc,updateDoc,deleteDoc} from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
-const firebaseConfig={apiKey:'AIzaSyDRcHls6PKgILZuKbo8tJiuIE5pu0LHgiw',authDomain:'al---faahed-farm.firebaseapp.com',projectId:'al---faahed-farm',storageBucket:'al---faahed-farm.firebasestorage.app',messagingSenderId:'269232241358',appId:'1:269232241358:web:77317dd1d0faabb0912e9f',measurementId:'G-RG0H0V4KWF'};
-const ADMIN_EMAIL='q86rbb@gmail.com';
-const ITEMS=['صينية لسعة بطاط عادي','صينية لسعة بطاط كيرلي','صينية مشروم بطاط عادي','صينية مشروم بطاط كيرلي','صينية سادة بطاط عادي','صينية سادة بطاط كيرلي'];
-const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app),orders=collection(db,'orders');
-const $=id=>document.getElementById(id);let unsub=null,admin=false,ready=false;
-function msg(id,s){$(id).textContent=s}
-function escapeHTML(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-function switchTab(which){$('orderSection').classList.toggle('hidden',which!=='order');$('adminSection').classList.toggle('hidden',which!=='admin');$('orderTab').classList.toggle('secondary',which!=='order');$('adminTab').classList.toggle('secondary',which!=='admin')}
-$('orderTab').onclick=()=>switchTab('order');$('adminTab').onclick=()=>switchTab('admin');
-function stopListen(){if(unsub){unsub();unsub=null}}
-function showDashboard(){stopListen();$('loginPanel').classList.add('hidden');$('dashboard').classList.remove('hidden');msg('adminStatus','');unsub=onSnapshot(query(orders,orderBy('createdAt','desc')),snap=>{let sum=0,counts=Object.fromEntries(ITEMS.map(i=>[i,0]));$('orderCount').textContent=snap.size;const frag=document.createDocumentFragment();snap.forEach(d=>{const o=d.data();let n=Number(o.quantity)||0;sum+=n;if(Object.hasOwn(counts,o.item))counts[o.item]+=n;const div=document.createElement('div');div.className='order';div.innerHTML=`<strong>${escapeHTML(o.name)}</strong> <span class="tag">${escapeHTML(o.status||'جديد')}</span><div>${escapeHTML(o.item)}</div><div>الكمية: ${n}</div>${o.notes?`<div>ملاحظة: ${escapeHTML(o.notes)}</div>`:''}<div class="muted">${o.createdAt?.toDate?.().toLocaleString('ar-KW')||'الآن'}</div><div class="actions"><button class="secondary" data-action="ready">تم التجهيز</button><button class="danger" data-action="delete">حذف الطلب</button></div>`;div.querySelector('[data-action="ready"]').onclick=async()=>{try{await updateDoc(doc(db,'orders',d.id),{status:'تم التجهيز'})}catch(e){msg('adminStatus','تعذر تحديث الطلب: '+e.code)}};div.querySelector('[data-action="delete"]').onclick=async()=>{if(!confirm('تأكيد حذف الطلب؟'))return;try{await deleteDoc(doc(db,'orders',d.id))}catch(e){msg('adminStatus','تعذر الحذف: '+e.code)}};frag.append(div)});$('trayCount').textContent=sum;$('itemTotals').innerHTML=ITEMS.map(i=>`<div class="muted">${escapeHTML(i)}: ${counts[i]}</div>`).join('');$('orderList').replaceChildren(frag);if(!snap.size)$('orderList').textContent='لا توجد طلبات حتى الآن';},e=>msg('adminStatus','تعذر تحميل الطلبات: '+e.code))}
-onAuthStateChanged(auth,async user=>{admin=!!user&&!user.isAnonymous&&user.email===ADMIN_EMAIL;ready=!!user;$('submitBtn').disabled=!ready;$('submitBtn').textContent=ready?'تأكيد الطلب 🍔':'جاري الاتصال...';if(admin)showDashboard();else{stopListen();$('dashboard').classList.add('hidden');$('loginPanel').classList.remove('hidden');if(!user){try{await signInAnonymously(auth)}catch(e){msg('message','تعذر تسجيل الدخول: '+e.code)}}}});
-$('orderForm').addEventListener('submit',async e=>{e.preventDefault();const name=$('name').value.trim().replace(/\s+/g,' '),item=$('item').value,quantity=Number($('qty').value),notes=$('notes').value.trim();if(name.split(' ').length<3){msg('message','يرجى كتابة الاسم الثلاثي.');return}if(!ITEMS.includes(item)||![1,2].includes(quantity))return;if(!auth.currentUser){msg('message','انتظر الاتصال ثم حاول مرة ثانية.');return}const b=$('submitBtn');b.disabled=true;msg('message','جاري تسجيل طلبك...');try{await addDoc(orders,{name,item,quantity,notes,createdAt:serverTimestamp()});msg('message','✅ تم تسجيل طلبك بنجاح!');$('orderForm').reset()}catch(err){msg('message','❌ تعذر حفظ الطلب: '+err.code)}finally{b.disabled=false}});
-$('loginForm').addEventListener('submit',async e=>{e.preventDefault();$('loginBtn').disabled=true;msg('adminStatus','جاري تسجيل الدخول...');try{await signInWithEmailAndPassword(auth,ADMIN_EMAIL,$('pin').value);$('pin').value=''}catch(err){msg('adminStatus','تعذر الدخول: '+err.code)}finally{$('loginBtn').disabled=false}});
-$('logoutBtn').onclick=async()=>{stopListen();await signOut(auth);switchTab('order')};
-</script></body></html>
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>مزرعة الفاهد | نظام طلبات البرجر</title>
+  <style>
+    :root{
+      color-scheme: dark;
+      --bg:#081510;
+      --bg-2:#0f221b;
+      --card:#183126;
+      --card-2:#1f3b2f;
+      --line:#47624f;
+      --text:#f5f7f5;
+      --muted:#b9c7bc;
+      --gold:#e6c072;
+      --gold-dark:#caa353;
+      --green:#2d7d57;
+      --red:#a14b4b;
+      --shadow:0 12px 32px rgba(0,0,0,.22);
+      --radius:22px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:Tahoma,Arial,sans-serif;
+      background:linear-gradient(180deg,#07130f 0%,#0d1d17 100%);
+      color:var(--text);
+    }
+    header{
+      padding:30px 16px 26px;
+      text-align:center;
+      background:linear-gradient(180deg,#183126 0%,#11231c 100%);
+      border-bottom:3px solid var(--gold-dark);
+      box-shadow:var(--shadow);
+      position:sticky;
+      top:0;
+      z-index:5;
+    }
+    .logo{font-size:46px;margin-bottom:8px}
+    header h1{margin:0;color:var(--gold);font-size:clamp(30px,4vw,40px)}
+    header p{margin:8px 0 0;color:#dbe4de;font-size:18px}
+    main{max-width:1150px;margin:26px auto;padding:0 16px 40px}
+    .tabs{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px}
+    .tabs button{
+      width:100%;padding:18px;border:0;border-radius:18px;background:#31483c;color:#fff;
+      font-size:22px;font-weight:700;cursor:pointer;transition:.2s transform,.2s opacity,.2s background;
+    }
+    .tabs button.active{background:var(--gold);color:#17241a}
+    .tabs button:hover{transform:translateY(-1px)}
+    .panel{
+      background:linear-gradient(180deg,rgba(34,61,49,.97),rgba(24,49,38,.97));
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      padding:24px;
+      box-shadow:var(--shadow);
+      margin-bottom:18px;
+    }
+    .panel h2{margin:0 0 8px;color:var(--gold);font-size:clamp(28px,4vw,36px)}
+    .sub{color:var(--muted);line-height:1.8;margin:0 0 18px}
+    .hidden{display:none!important}
+    .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    .full-span{grid-column:1/-1}
+    label{display:block;margin:0 0 8px;font-weight:700;font-size:20px}
+    input,select,textarea{
+      width:100%;padding:16px 18px;border-radius:16px;border:1px solid #6b8574;background:#0d1d17;
+      color:#fff;font-size:18px;font-family:inherit;outline:none;
+    }
+    input:focus,select:focus,textarea:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(230,192,114,.15)}
+    textarea{min-height:110px;resize:vertical}
+    .hint{display:block;color:var(--muted);font-size:14px;margin-top:8px;line-height:1.7}
+    .btn{
+      border:0;border-radius:16px;padding:16px 20px;font-size:20px;font-weight:800;cursor:pointer;
+      transition:.2s transform,.2s opacity,.2s background;font-family:inherit;
+    }
+    .btn:hover{transform:translateY(-1px)}
+    .btn:disabled{opacity:.6;cursor:wait;transform:none}
+    .btn-primary{background:var(--gold);color:#17241a}
+    .btn-secondary{background:#3d5648;color:#fff}
+    .btn-danger{background:var(--red);color:#fff}
+    .btn-success{background:var(--green);color:#fff}
+    .btn-full{width:100%}
+    .status{margin-top:14px;line-height:1.8;font-size:17px}
+    .ok{color:#a8f0b2}.err{color:#ffb6b6}.warn{color:var(--gold)}
+
+    .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
+    .stat-card{
+      background:#102118;border:1px solid #2f493b;border-radius:18px;padding:16px 18px;
+    }
+    .stat-card small{display:block;color:var(--muted);font-size:15px;margin-bottom:10px}
+    .stat-card strong{display:block;font-size:40px;color:var(--gold);line-height:1}
+
+    .top-tools{display:grid;grid-template-columns:1.2fr .8fr;gap:14px;margin-bottom:18px}
+    .mini-panel{background:#102118;border:1px solid #2f493b;border-radius:18px;padding:18px}
+    .mini-panel h3{margin:0 0 14px;color:#fff;font-size:24px}
+    .mini-panel .summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .summary-item{background:#0b1914;border:1px solid #263b30;border-radius:14px;padding:12px 14px;color:#d7e2da;line-height:1.7}
+    .summary-item b{color:var(--gold);font-size:22px;display:block;margin-top:4px}
+    .search-row{display:flex;gap:10px;align-items:center}
+
+    .section-title{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:8px 0 14px}
+    .section-title h3{margin:0;font-size:28px}
+    .counter-pill{background:#102118;border:1px solid #365042;border-radius:999px;padding:8px 14px;color:var(--gold);font-weight:700}
+    .orders-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+    .order-column{
+      background:#102118;border:1px solid #2f493b;border-radius:20px;padding:18px;min-height:260px;
+    }
+    .order-list{display:flex;flex-direction:column;gap:14px}
+    .empty{
+      border:1px dashed #486252;border-radius:16px;padding:24px;text-align:center;color:var(--muted);line-height:1.9;
+      background:rgba(255,255,255,.02);
+    }
+    .order-card{
+      background:linear-gradient(180deg,#12241c,#0d1b15);
+      border:1px solid #31483c;border-radius:18px;padding:16px;position:relative;
+    }
+    .order-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:10px}
+    .order-name{font-size:26px;font-weight:800;color:var(--gold);line-height:1.3}
+    .badge{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;font-size:13px;font-weight:800}
+    .badge-received{background:rgba(230,192,114,.14);border:1px solid rgba(230,192,114,.35);color:var(--gold)}
+    .badge-delivered{background:rgba(82,190,124,.14);border:1px solid rgba(82,190,124,.35);color:#8ef0aa}
+    .order-meta{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0}
+    .meta-box{background:#0b1713;border:1px solid #22362c;border-radius:14px;padding:12px}
+    .meta-box small{display:block;color:var(--muted);margin-bottom:4px}
+    .meta-box div{font-size:19px;font-weight:700}
+    .note-box{margin-top:8px;padding:12px 14px;background:#0b1713;border-radius:14px;border:1px solid #22362c;line-height:1.8;color:#e6eee8}
+    .order-time{margin-top:12px;color:var(--muted);font-size:14px;line-height:1.8}
+    .card-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+    .card-actions .btn{font-size:16px;padding:12px 14px}
+    footer{text-align:center;color:#a8b8ae;padding:28px 12px 36px}
+
+    @media (max-width:900px){
+      .stats{grid-template-columns:1fr 1fr}
+      .top-tools,.orders-grid,.grid-2,.form-grid{grid-template-columns:1fr}
+    }
+    @media (max-width:640px){
+      header h1{font-size:28px}
+      header p{font-size:16px}
+      .tabs button{font-size:18px;padding:16px}
+      .panel{padding:18px}
+      .panel h2{font-size:28px}
+      label{font-size:18px}
+      input,select,textarea{font-size:17px}
+      .stat-card strong{font-size:32px}
+      .order-name{font-size:22px}
+      .section-title h3{font-size:24px}
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">🍔🌴</div>
+    <h1>مزرعة الفاهد</h1>
+    <p>نظام طلبات البرجر</p>
+  </header>
+
+  <main>
+    <div class="tabs">
+      <button id="orderTab" class="active">طلب برجر</button>
+      <button id="adminTab">لوحة المنظم 🔐</button>
+    </div>
+
+    <section id="orderSection" class="panel">
+      <h2>تسجيل طلب جديد</h2>
+      <p class="sub">واجهة بسيطة ومرتبة للضيوف. كل شخص يسجّل طلبه مرة واحدة بشكل واضح وسريع.</p>
+
+      <form id="orderForm" class="form-grid">
+        <div>
+          <label for="name">اسم صاحب الطلب</label>
+          <input id="name" required maxlength="60" placeholder="الاسم الثلاثي" autocomplete="name">
+        </div>
+
+        <div>
+          <label for="item">اختر الصنف</label>
+          <select id="item" required>
+            <option value="">اختر من المنيو</option>
+            <option>صينية لسعة بطاط عادي</option>
+            <option>صينية لسعة بطاط كيرلي</option>
+            <option>صينية مشروم بطاط عادي</option>
+            <option>صينية مشروم بطاط كيرلي</option>
+            <option>صينية سادة بطاط عادي</option>
+            <option>صينية سادة بطاط كيرلي</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="qty">الكمية</label>
+          <select id="qty" required>
+            <option value="1">1 صينية</option>
+            <option value="2">2 صينية</option>
+          </select>
+          <small class="hint">الحد الأقصى: صينيتان لكل طلب.</small>
+        </div>
+
+        <div class="full-span">
+          <label for="notes">ملاحظات على الطلب (اختياري)</label>
+          <textarea id="notes" maxlength="300" placeholder="مثلاً: بدون بصل أو بدون صوص"></textarea>
+        </div>
+
+        <div class="full-span">
+          <button id="submitBtn" type="submit" class="btn btn-primary btn-full" disabled>جاري الاتصال...</button>
+        </div>
+      </form>
+
+      <div id="message" class="status warn" role="status" aria-live="polite"></div>
+    </section>
+
+    <section id="adminSection" class="panel hidden">
+      <h2>لوحة المنظم</h2>
+      <p class="sub">لوحة احترافية لمتابعة الطلبات المستلمة والطلبات التي تم تسليمها، مع إمكانية الحذف والتسليم بسهولة.</p>
+
+      <div id="loginPanel">
+        <form id="loginForm" class="grid-2">
+          <div>
+            <label for="pin">الرمز السري</label>
+            <input id="pin" type="password" required autocomplete="current-password" placeholder="أدخل رمز المنظم">
+          </div>
+          <div style="display:flex;align-items:end">
+            <button id="loginBtn" type="submit" class="btn btn-primary btn-full">دخول المنظم</button>
+          </div>
+        </form>
+        <div id="adminStatus" class="status warn" role="status"></div>
+      </div>
+
+      <div id="dashboard" class="hidden">
+        <div class="stats">
+          <div class="stat-card"><small>الطلبات المستلمة</small><strong id="pendingCount">0</strong></div>
+          <div class="stat-card"><small>الطلبات المسلّمة</small><strong id="deliveredCount">0</strong></div>
+          <div class="stat-card"><small>الصواني الحالية</small><strong id="pendingTrays">0</strong></div>
+          <div class="stat-card"><small>إجمالي الصواني</small><strong id="totalTrays">0</strong></div>
+        </div>
+
+        <div class="top-tools">
+          <div class="mini-panel">
+            <h3>إجمالي الأصناف</h3>
+            <div id="itemTotals" class="summary-grid"></div>
+          </div>
+          <div class="mini-panel">
+            <h3>بحث سريع</h3>
+            <div class="search-row">
+              <input id="searchInput" placeholder="ابحث باسم الشخص أو الصنف">
+            </div>
+            <small class="hint">البحث يفلتر الطلبات المستلمة والمسلّمة معاً.</small>
+          </div>
+        </div>
+
+        <div class="orders-grid">
+          <div class="order-column">
+            <div class="section-title">
+              <h3>الطلبات المستلمة</h3>
+              <span class="counter-pill" id="pendingLabel">0 طلب</span>
+            </div>
+            <div id="pendingList" class="order-list"></div>
+          </div>
+
+          <div class="order-column">
+            <div class="section-title">
+              <h3>الطلبات التي تم تسليمها</h3>
+              <span class="counter-pill" id="deliveredLabel">0 طلب</span>
+            </div>
+            <div id="deliveredList" class="order-list"></div>
+          </div>
+        </div>
+
+        <div style="margin-top:18px">
+          <button id="logoutBtn" class="btn btn-secondary btn-full">تسجيل الخروج</button>
+        </div>
+        <div id="dashboardStatus" class="status warn"></div>
+      </div>
+    </section>
+  </main>
+
+  <footer>مزرعة الفاهد © 2026</footer>
+
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
+    import { getAuth, onAuthStateChanged, signInAnonymously, signInWithEmailAndPassword, signOut } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
+    import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, serverTimestamp, doc, updateDoc, deleteDoc } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
+
+    const firebaseConfig = {
+      apiKey:'AIzaSyDRcHls6PKgILZuKbo8tJiuIE5pu0LHgiw',
+      authDomain:'al---faahed-farm.firebaseapp.com',
+      projectId:'al---faahed-farm',
+      storageBucket:'al---faahed-farm.firebasestorage.app',
+      messagingSenderId:'269232241358',
+      appId:'1:269232241358:web:77317dd1d0faabb0912e9f',
+      measurementId:'G-RG0H0V4KWF'
+    };
+
+    const ADMIN_EMAIL = 'q86rbb@gmail.com';
+    const ITEMS = [
+      'صينية لسعة بطاط عادي',
+      'صينية لسعة بطاط كيرلي',
+      'صينية مشروم بطاط عادي',
+      'صينية مشروم بطاط كيرلي',
+      'صينية سادة بطاط عادي',
+      'صينية سادة بطاط كيرلي'
+    ];
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const ordersCol = collection(db,'orders');
+
+    const $ = (id) => document.getElementById(id);
+    let unsub = null;
+    let ready = false;
+    let adminMode = false;
+    let allOrders = [];
+
+    function escapeHTML(v){
+      return String(v ?? '').replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
+    }
+
+    function setStatus(id, text, type='warn'){
+      const el = $(id);
+      el.textContent = text;
+      el.className = 'status ' + type;
+    }
+
+    function switchTab(tab){
+      const orderOn = tab === 'order';
+      $('orderSection').classList.toggle('hidden', !orderOn);
+      $('adminSection').classList.toggle('hidden', orderOn);
+      $('orderTab').classList.toggle('active', orderOn);
+      $('adminTab').classList.toggle('active', !orderOn);
+    }
+
+    $('orderTab').onclick = () => switchTab('order');
+    $('adminTab').onclick = () => switchTab('admin');
+
+    function stopListener(){
+      if(unsub){ unsub(); unsub = null; }
+    }
+
+    function normalizeStatus(status){
+      if(status === 'delivered' || status === 'تم التسليم') return 'delivered';
+      return 'received';
+    }
+
+    function statusLabel(status){
+      return normalizeStatus(status) === 'delivered' ? 'تم التسليم' : 'مستلم';
+    }
+
+    function formatDate(value){
+      try{
+        if(value?.toDate) return value.toDate().toLocaleString('ar-KW');
+        return 'الآن';
+      }catch{ return 'الآن'; }
+    }
+
+    function matchesSearch(order, keyword){
+      if(!keyword) return true;
+      const hay = `${order.name} ${order.item} ${order.notes || ''}`.toLowerCase();
+      return hay.includes(keyword.toLowerCase());
+    }
+
+    function renderItemTotals(orders){
+      const counts = Object.fromEntries(ITEMS.map(i => [i,0]));
+      orders.forEach(o => {
+        if(counts[o.item] !== undefined) counts[o.item] += Number(o.quantity) || 0;
+      });
+      $('itemTotals').innerHTML = ITEMS.map(item => `
+        <div class="summary-item">
+          ${escapeHTML(item)}
+          <b>${counts[item]}</b>
+        </div>
+      `).join('');
+    }
+
+    function buildOrderCard(order, type){
+      const card = document.createElement('div');
+      card.className = 'order-card';
+      const deliveredText = type === 'delivered' && order.deliveredAt ? `<div class="order-time">تاريخ التسليم: ${formatDate(order.deliveredAt)}</div>` : '';
+      card.innerHTML = `
+        <div class="order-head">
+          <div class="order-name">${escapeHTML(order.name)}</div>
+          <span class="badge ${type === 'delivered' ? 'badge-delivered' : 'badge-received'}">${statusLabel(order.status)}</span>
+        </div>
+        <div class="order-meta">
+          <div class="meta-box">
+            <small>الصنف</small>
+            <div>${escapeHTML(order.item)}</div>
+          </div>
+          <div class="meta-box">
+            <small>الكمية</small>
+            <div>${Number(order.quantity) || 0}</div>
+          </div>
+        </div>
+        <div class="note-box">${order.notes ? `ملاحظة: ${escapeHTML(order.notes)}` : 'ملاحظة: لا توجد ملاحظات'}</div>
+        <div class="order-time">تاريخ الطلب: ${formatDate(order.createdAt)}</div>
+        ${deliveredText}
+      `;
+
+      const actions = document.createElement('div');
+      actions.className = 'card-actions';
+
+      if(type === 'pending'){
+        const deliverBtn = document.createElement('button');
+        deliverBtn.className = 'btn btn-success';
+        deliverBtn.textContent = 'تم التسليم';
+        deliverBtn.onclick = async () => {
+          if(!confirm(`تأكيد تسليم طلب ${order.name}؟`)) return;
+          try{
+            await updateDoc(doc(db,'orders',order.id), {
+              status:'delivered',
+              deliveredAt: serverTimestamp()
+            });
+            setStatus('dashboardStatus', `تم نقل طلب ${order.name} إلى قسم الطلبات المسلّمة.`, 'ok');
+          }catch(err){
+            setStatus('dashboardStatus', 'تعذر تحديث الطلب: ' + err.code, 'err');
+          }
+        };
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'btn btn-danger';
+        deleteBtn.textContent = 'حذف الطلب';
+        deleteBtn.onclick = async () => {
+          if(!confirm(`تأكيد حذف طلب ${order.name}؟`)) return;
+          try{
+            await deleteDoc(doc(db,'orders',order.id));
+            setStatus('dashboardStatus', `تم حذف طلب ${order.name}.`, 'ok');
+          }catch(err){
+            setStatus('dashboardStatus', 'تعذر حذف الطلب: ' + err.code, 'err');
+          }
+        };
+
+        actions.append(deliverBtn, deleteBtn);
+      }else{
+        const undoBtn = document.createElement('button');
+        undoBtn.className = 'btn btn-secondary';
+        undoBtn.textContent = 'إرجاع للمستلمة';
+        undoBtn.onclick = async () => {
+          try{
+            await updateDoc(doc(db,'orders',order.id), {
+              status:'received',
+              deliveredAt: null
+            });
+            setStatus('dashboardStatus', `تم إرجاع طلب ${order.name} إلى المستلمة.`, 'ok');
+          }catch(err){
+            setStatus('dashboardStatus', 'تعذر إرجاع الطلب: ' + err.code, 'err');
+          }
+        };
+        actions.append(undoBtn);
+      }
+
+      card.appendChild(actions);
+      return card;
+    }
+
+    function renderDashboard(){
+      const keyword = $('searchInput').value.trim();
+
+      const normalized = allOrders.map(o => ({ ...o, normalizedStatus: normalizeStatus(o.status) }));
+      const pendingAll = normalized.filter(o => o.normalizedStatus !== 'delivered');
+      const deliveredAll = normalized.filter(o => o.normalizedStatus === 'delivered');
+
+      const pending = pendingAll
+        .filter(o => matchesSearch(o, keyword))
+        .sort((a,b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
+
+      const delivered = deliveredAll
+        .filter(o => matchesSearch(o, keyword))
+        .sort((a,b) => (b.deliveredAt?.seconds || b.createdAt?.seconds || 0) - (a.deliveredAt?.seconds || a.createdAt?.seconds || 0));
+
+      $('pendingCount').textContent = pendingAll.length;
+      $('deliveredCount').textContent = deliveredAll.length;
+      $('pendingTrays').textContent = pendingAll.reduce((s,o) => s + (Number(o.quantity)||0), 0);
+      $('totalTrays').textContent = normalized.reduce((s,o) => s + (Number(o.quantity)||0), 0);
+      $('pendingLabel').textContent = `${pendingAll.length} طلب`;
+      $('deliveredLabel').textContent = `${deliveredAll.length} طلب`;
+      renderItemTotals(normalized);
+
+      const pendingList = $('pendingList');
+      const deliveredList = $('deliveredList');
+      pendingList.innerHTML = '';
+      deliveredList.innerHTML = '';
+
+      if(!pending.length){
+        pendingList.innerHTML = `<div class="empty">لا توجد طلبات مستلمة حالياً${keyword ? ' حسب البحث الحالي' : ''}.</div>`;
+      }else{
+        pending.forEach(order => pendingList.appendChild(buildOrderCard(order, 'pending')));
+      }
+
+      if(!delivered.length){
+        deliveredList.innerHTML = `<div class="empty">لا توجد طلبات مسلّمة${keyword ? ' حسب البحث الحالي' : ''}.</div>`;
+      }else{
+        delivered.forEach(order => deliveredList.appendChild(buildOrderCard(order, 'delivered')));
+      }
+    }
+
+    function showDashboard(){
+      stopListener();
+      $('loginPanel').classList.add('hidden');
+      $('dashboard').classList.remove('hidden');
+      setStatus('adminStatus', '');
+      unsub = onSnapshot(query(ordersCol, orderBy('createdAt','desc')), (snap) => {
+        allOrders = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+        renderDashboard();
+      }, (err) => {
+        setStatus('dashboardStatus', 'تعذر تحميل الطلبات: ' + err.code, 'err');
+      });
+    }
+
+    $('searchInput').addEventListener('input', renderDashboard);
+
+    onAuthStateChanged(auth, async (user) => {
+      adminMode = !!user && !user.isAnonymous && user.email === ADMIN_EMAIL;
+      ready = !!user;
+      $('submitBtn').disabled = !ready;
+      $('submitBtn').textContent = ready ? 'تأكيد الطلب 🍔' : 'جاري الاتصال...';
+
+      if(adminMode){
+        showDashboard();
+      }else{
+        stopListener();
+        $('dashboard').classList.add('hidden');
+        $('loginPanel').classList.remove('hidden');
+        if(!user){
+          try{
+            await signInAnonymously(auth);
+          }catch(err){
+            setStatus('message', 'تعذر تسجيل الدخول: ' + err.code, 'err');
+          }
+        }
+      }
+    });
+
+    $('orderForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = $('name').value.trim().replace(/\s+/g,' ');
+      const item = $('item').value;
+      const quantity = Number($('qty').value);
+      const notes = $('notes').value.trim();
+
+      if(name.split(' ').length < 3){
+        setStatus('message', 'يرجى كتابة الاسم الثلاثي.', 'err');
+        return;
+      }
+      if(!ITEMS.includes(item) || ![1,2].includes(quantity)) return;
+      if(!auth.currentUser){
+        setStatus('message', 'انتظر الاتصال ثم حاول مرة ثانية.', 'warn');
+        return;
+      }
+
+      const btn = $('submitBtn');
+      btn.disabled = true;
+      setStatus('message', 'جاري تسجيل طلبك...', 'warn');
+
+      try{
+        await addDoc(ordersCol, {
+          name,
+          item,
+          quantity,
+          notes,
+          status:'received',
+          deliveredAt:null,
+          createdAt:serverTimestamp()
+        });
+        $('orderForm').reset();
+        setStatus('message', '✅ تم تسجيل طلبك بنجاح!', 'ok');
+      }catch(err){
+        setStatus('message', '❌ تعذر حفظ الطلب: ' + err.code, 'err');
+      }finally{
+        btn.disabled = false;
+      }
+    });
+
+    $('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      $('loginBtn').disabled = true;
+      setStatus('adminStatus', 'جاري تسجيل الدخول...', 'warn');
+      try{
+        await signInWithEmailAndPassword(auth, ADMIN_EMAIL, $('pin').value);
+        $('pin').value = '';
+        setStatus('adminStatus', 'تم تسجيل الدخول بنجاح.', 'ok');
+      }catch(err){
+        setStatus('adminStatus', 'تعذر الدخول: ' + err.code, 'err');
+      }finally{
+        $('loginBtn').disabled = false;
+      }
+    });
+
+    $('logoutBtn').onclick = async () => {
+      stopListener();
+      await signOut(auth);
+      switchTab('order');
+    };
+  </script>
+</body>
+</html>
