@@ -1,1 +1,113 @@
-index.html
+
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>طلبات البرجر | مزرعة الفاهد</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#101b17;color:#fff;font-family:Tahoma,Arial,sans-serif}
+header{text-align:center;padding:35px 15px;background:#20392c;border-bottom:3px solid #d6ad63}
+header h1{color:#f3cb7c;margin:0 0 12px;font-size:28px}
+header p{margin:0;color:#d7ded8}
+main{max-width:520px;margin:25px auto;padding:0 16px}
+.card{background:#203329;border:1px solid #49604d;border-radius:18px;padding:22px}
+h2{text-align:center;color:#f3cb7c;font-size:21px}
+label{display:block;margin:20px 0 9px;font-weight:bold}
+input,select,textarea{width:100%;padding:15px;border-radius:10px;border:1px solid #718375;background:#14231b;color:white;font-size:16px;font-family:inherit}
+textarea{min-height:100px;resize:vertical}
+button{width:100%;padding:17px;margin-top:24px;background:#d6ad63;border:0;border-radius:12px;color:#17241a;font-size:19px;font-weight:bold;cursor:pointer}
+button:disabled{opacity:.5}
+.note{text-align:center;color:#c6d1c9;font-size:13px;margin-top:16px}
+#message{text-align:center;margin-top:18px;line-height:1.8}
+footer{text-align:center;color:#9caea0;padding:30px 10px;font-size:13px}
+</style>
+</head>
+<body>
+<header>
+<h1>🍔 مزرعة الفاهد</h1>
+<p>نظام طلبات البرجر</p>
+</header>
+
+<main>
+<div class="card">
+<h2>تسجيل طلبك</h2>
+<form id="orderForm">
+<label for="name">اسم صاحب الطلب</label>
+<input id="name" required maxlength="60" placeholder="اكتب اسمك">
+
+<label for="item">اختر الصنف</label>
+<select id="item" required>
+<option value="">اختر من المنيو</option>
+<option>صينية لسعة بطاط عادي</option>
+<option>صينية لسعة بطاط كيرلي</option>
+<option>صينية مشروم بطاط عادي</option>
+<option>صينية مشروم بطاط كيرلي</option>
+<option>صينية سادة بطاط عادي</option>
+<option>صينية سادة بطاط كيرلي</option>
+</select>
+
+<label for="qty">الكمية (الحد الأقصى 2)</label>
+<select id="qty" required>
+<option value="1">1 صينية</option>
+<option value="2">2 صينية</option>
+</select>
+
+<label for="notes">ملاحظات على الطلب (اختياري)</label>
+<textarea id="notes" maxlength="300" placeholder="مثلاً: بدون صوص أو بدون بصل"></textarea>
+
+<button id="submitBtn" type="submit">تأكيد الطلب 🍔</button>
+</form>
+<div id="message" role="status" aria-live="polite"></div>
+<p class="note">يرجى التأكد من طلبك قبل الإرسال</p>
+</div>
+</main>
+<footer>مزرعة الفاهد © 2026</footer>
+
+<script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import {getFirestore,collection,addDoc,serverTimestamp} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
+const firebaseConfig={
+apiKey:"AIzaSyDRcHls6PKgILZuKbo8tJiuIE5pu0LHgiw",
+authDomain:"al---faahed-farm.firebaseapp.com",
+projectId:"al---faahed-farm",
+storageBucket:"al---faahed-farm.firebasestorage.app",
+messagingSenderId:"269232241358",
+appId:"1:269232241358:web:77317dd1d0faabb0912e9f",
+measurementId:"G-RG0H0V4KWF"
+};
+
+const app=initializeApp(firebaseConfig);
+const db=getFirestore(app);
+const form=document.getElementById("orderForm");
+const button=document.getElementById("submitBtn");
+const message=document.getElementById("message");
+
+form.addEventListener("submit",async(e)=>{
+e.preventDefault();
+button.disabled=true;
+message.textContent="جاري تسجيل طلبك...";
+
+try{
+await addDoc(collection(db,"burgerOrders"),{
+name:document.getElementById("name").value.trim(),
+item:document.getElementById("item").value,
+quantity:Number(document.getElementById("qty").value),
+notes:document.getElementById("notes").value.trim(),
+createdAt:serverTimestamp()
+});
+message.style.color="#a8efb6";
+message.textContent="✅ تم تسجيل طلبك بنجاح!";
+form.reset();
+}catch(error){
+console.error(error);
+message.style.color="#ffaaaa";
+message.textContent="تعذر حفظ الطلب. تأكد من إعدادات Firestore وحاول مرة ثانية.";
+}
+button.disabled=false;
+});
+</script>
+</body>
+</html>
