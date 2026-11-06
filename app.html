@@ -158,11 +158,11 @@
 
   <main>
     <div class="tabs">
-      <button id="orderTab">طلب برجر</button>
-      <button id="adminTab" class="active">لوحة المنظم 🔐</button>
+      <button id="orderTab" class="active">طلب برجر</button>
+      <button id="adminTab">لوحة المنظم 🔐</button>
     </div>
 
-    <section id="orderSection" class="panel hidden">
+    <section id="orderSection" class="panel">
       <h2>تسجيل طلب جديد</h2>
       <p class="sub">واجهة بسيطة ومرتبة للضيوف. كل شخص يسجّل طلبه مرة واحدة بشكل واضح وسريع.</p>
 
@@ -207,11 +207,11 @@
       <div id="message" class="status warn" role="status" aria-live="polite"></div>
     </section>
 
-    <section id="adminSection" class="panel">
+    <section id="adminSection" class="panel hidden">
       <h2>لوحة المنظم</h2>
       <p class="sub">لوحة احترافية لمتابعة الطلبات المستلمة والطلبات التي تم تسليمها، مع إمكانية الحذف والتسليم بسهولة.</p>
 
-      <div id="loginPanel" class="hidden">
+      <div id="loginPanel">
         <form id="loginForm" class="grid-2">
           <div>
             <label for="pin">الرمز السري</label>
@@ -328,7 +328,6 @@
       $('adminTab').classList.toggle('active', !orderOn);
     }
 
-    switchTab('admin');
     $('orderTab').onclick = () => switchTab('order');
     $('adminTab').onclick = () => switchTab('admin');
 
@@ -508,7 +507,7 @@
     $('searchInput').addEventListener('input', renderDashboard);
 
     onAuthStateChanged(auth, async (user) => {
-      adminMode = !!user;
+      adminMode = !!user && !user.isAnonymous && user.email === ADMIN_EMAIL;
       ready = !!user;
       $('submitBtn').disabled = !ready;
       $('submitBtn').textContent = ready ? 'تأكيد الطلب 🍔' : 'جاري الاتصال...';
@@ -518,7 +517,7 @@
       }else{
         stopListener();
         $('dashboard').classList.add('hidden');
-        $('loginPanel').classList.add('hidden');
+        $('loginPanel').classList.remove('hidden');
         if(!user){
           try{
             await signInAnonymously(auth);
@@ -587,7 +586,7 @@
     $('logoutBtn').onclick = async () => {
       stopListener();
       await signOut(auth);
-      switchTab('admin');
+      switchTab('order');
     };
   </script>
 </body>
