@@ -158,11 +158,11 @@
 
   <main>
     <div class="tabs">
-      <button id="orderTab" class="active">طلب برجر</button>
-      <button id="adminTab">لوحة المنظم 🔐</button>
+      <button id="orderTab">طلب برجر</button>
+      <button id="adminTab" class="active">لوحة المنظم 🔐</button>
     </div>
 
-    <section id="orderSection" class="panel">
+    <section id="orderSection" class="panel hidden">
       <h2>تسجيل طلب جديد</h2>
       <p class="sub">واجهة بسيطة ومرتبة للضيوف. كل شخص يسجّل طلبه مرة واحدة بشكل واضح وسريع.</p>
 
@@ -207,7 +207,7 @@
       <div id="message" class="status warn" role="status" aria-live="polite"></div>
     </section>
 
-    <section id="adminSection" class="panel hidden">
+    <section id="adminSection" class="panel">
       <h2>لوحة المنظم</h2>
       <p class="sub">لوحة احترافية لمتابعة الطلبات المستلمة والطلبات التي تم تسليمها، مع إمكانية الحذف والتسليم بسهولة.</p>
 
@@ -586,7 +586,7 @@
     $('logoutBtn').onclick = async () => {
       stopListener();
       await signOut(auth);
-      switchTab('order');
+      switchTab('admin');
     };
   </script>
 </body>
